@@ -1,4 +1,5 @@
 using System;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -37,6 +38,46 @@ namespace Analytic
 #endif
 
                 var jObject = new JObject();
+                jObject.Add(new JProperty("device_name", SystemInfo.deviceModel));
+                jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
+                jObject.Add(new JProperty("platform_name", Application.platform.ToString()));
+                jObject.Add(new JProperty("platform_version", SystemInfo.operatingSystem));
+
+                jObject.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
+                jObject.Add(new JProperty("processor_count", SystemInfo.processorCount));
+                jObject.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
+                jObject.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
+                AnalyticManager.AddEvent(EventTypes.Identify, jObject);
+            }
+        }
+
+        public static void IdentifyUserData(JObject userData)
+        {
+            if (AnalyticManager.initialized)
+            {
+                string userId = PlayerPrefs.GetString("userId");
+                if (string.IsNullOrEmpty(userId))
+                {
+                    userId = System.Guid.NewGuid().ToString();
+                    PlayerPrefs.SetString("userId", userId);
+                }
+
+                string roninAddress = "";
+                try
+                {
+                    roninAddress = userData["roninAddress"].Value<string>();
+                }
+                catch (System.Exception ex) { }
+
+                AnalyticManager.userId = userId;
+#if UNITY_EDITOR
+            AnalyticManager.env = "dev";
+#else
+                AnalyticManager.env = "staging";
+#endif
+
+                var jObject = new JObject();
+                jObject.Add(new JProperty("ronin_address", roninAddress));
                 jObject.Add(new JProperty("device_name", SystemInfo.deviceModel));
                 jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
                 jObject.Add(new JProperty("platform_name", Application.platform.ToString()));

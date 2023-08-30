@@ -35,10 +35,24 @@ namespace Analytic.Demo
             AnalyticManager.InitManager(apiKey);
             yield return new WaitForEndOfFrame();
 
-            AnalyticManager.IdentifyLocalUser(); //INIT IDENTIFY LOCAL USER
+            string message = "";
+            string signature = "";
+            UserVertification.GetArgVertification(out signature, out message);
+            var userData = UserVertification.Vertification(signature, message);
+            if (userData != null)
+            {
+                AnalyticManager.IdentifyUserData(userData); //INIT IDENTIFY FROM USER DATA (MavisHub)
+            }
+            else
+            {
+                AnalyticManager.IdentifyLocalUser(); //INIT IDENTIFY LOCAL USER  
+            }
+
             yield return new WaitForEndOfFrame();
 
-            AnalyticManager.AddEvent(EventTypes.Screen, new { @event = "demo_screen" });      
+
+
+            AnalyticManager.AddEvent(EventTypes.Screen, new { @event = "demo_screen" });
         }
 
 
