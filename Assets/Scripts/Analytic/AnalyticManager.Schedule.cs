@@ -15,9 +15,10 @@ namespace Analytic
         public const int REQUEST_INTERVAL = 10;
         public const int RETRY_NUMBER = 3;
         public const int EVENT_PER_REQUEST = 300;
-        public static string endPoint = "https://x.skymavis.com/track";
-        public static string apiKey;
-        public static HeartbeatStats heartbeatStats;
+        public static readonly string EN_POINT = "https://x.skymavis.com/track";
+        public static string API_KEY;
+        private static HeartbeatStats _heartbeatStats;
+        private static string _currentName = "";
 
         private static readonly Dictionary<AnalyticRequest, int> dictRetryRequests = new Dictionary<AnalyticRequest, int>();
 
@@ -25,7 +26,7 @@ namespace Analytic
         {
             while (true)
             {
-                if (initialized)
+                if (initialized && !string.IsNullOrEmpty(userId) && !string.IsNullOrEmpty(API_KEY))
                 {
                     if (Time.realtimeSinceStartup - lastRequestTime > REQUEST_INTERVAL)
                     {
@@ -44,15 +45,25 @@ namespace Analytic
             if (analyticListData == null) return;
             if(analyticListData.listEventDatas.Count == 0)
             {
-                string heartbeatData = JsonConvert.SerializeObject(heartbeatStats);
+                //string heartbeatData = JsonConvert.SerializeObject(_heartbeatStats);
 
-                var jObject = new JObject();
-                var jHeartbeatData = JObject.Parse(heartbeatData);
-                jObject.Add("action_properties", jHeartbeatData);
-                jObject.Add(new JProperty("event", "heartbeat"));
-                AddEvent(EventTypes.Track, jObject);
+                //var jObject = new JObject();
+                //var jHeartbeatData = JObject.Parse(heartbeatData);
+                //jObject.Add("action_properties", jHeartbeatData);
+                //jObject.Add(new JProperty("event", "heartbeat"));
+                AddEvent(EventTypes.Track, new
+                {
+                    @event = "heartbeat",
+                    action_properties = _heartbeatStats
+                });
+                _heartbeatStats.EndBeat();
+            }
 
-                heartbeatStats.EndBeat();
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene != null && activeScene.name != _currentName)
+            {
+                _currentName = activeScene.name;
+                AnalyticManager.AddEvent(EventTypes.Screen, AnalyticConst.NewScreenEvent("s_" + _currentName));
             }
 
             //Create new request
@@ -61,15 +72,15 @@ namespace Analytic
 
         private static void Submit(AnalyticRequest data, Action<AsyncOperation> cb)
         {
-            var request = new UnityWebRequest(endPoint, "POST"); // start as POST, then change later
+            var request = new UnityWebRequest(EN_POINT, "POST"); // start as POST, then change later
             request.SetRequestHeader("Content-Type", "application/json");
 
-            var apiBytes = Encoding.UTF8.GetBytes($"{apiKey}:");
+            var apiBytes = Encoding.UTF8.GetBytes($"{API_KEY}:");
             string encodedText = Convert.ToBase64String(apiBytes, Base64FormattingOptions.None);
             request.SetRequestHeader("Authorization", "Basic " + encodedText);
             request.downloadHandler = new DownloadHandlerBuffer();
             var json = JsonConvert.SerializeObject(data, AnalyticListData.SerializerSettings);
-            Debug.Log($"[Analytic]: {json}");
+            Debug.Log(json);
             var jsonBytes = new UTF8Encoding().GetBytes(json);
             request.uploadHandler = new UploadHandlerRaw(jsonBytes);
 
@@ -95,7 +106,6 @@ namespace Analytic
 
         private static IEnumerator RequestAfter(AnalyticRequest analyticRequest, float seconds)
         {
-           
             yield return new WaitForSeconds(seconds);
             DoRequest(analyticRequest);
         }
@@ -165,7 +175,7 @@ namespace Analytic
             }
 
             analyticListData.SaveToDevice();
-            Debug.Log($"[Analytic] Request Finish: {request.events.Count}");
+            //Debug.Log($"[Analytic] Request Finish: {request.events.Count}");
         }
     }
 }

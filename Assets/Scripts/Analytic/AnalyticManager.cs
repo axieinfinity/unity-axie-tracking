@@ -1,5 +1,4 @@
 using System;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -22,80 +21,88 @@ namespace Analytic
      
         public static void IdentifyLocalUser()
         {
-            if (AnalyticManager.initialized)
+            JObject jObject = LoadLocalProfile();
+
+            UserVertification.GetArgVertification(out var signature, out var message);
+            var userData = UserVertification.Vertification(signature, message);
+            if(userData != null)
             {
-                string userId = PlayerPrefs.GetString("userId");
-                if (string.IsNullOrEmpty(userId))
+                string roninAddress = (string)userData["roninAddress"];
+                if (string.IsNullOrEmpty(roninAddress))
                 {
-                    userId = System.Guid.NewGuid().ToString();
-                    PlayerPrefs.SetString("userId", userId);
+                    jObject.Add(new JProperty("ronin_address", roninAddress));
                 }
-                AnalyticManager.userId = userId;
-#if UNITY_EDITOR
-            AnalyticManager.env = "dev";
-#else
-                AnalyticManager.env = "staging";
-#endif
-
-                var jObject = new JObject();
-                jObject.Add(new JProperty("device_name", SystemInfo.deviceModel));
-                jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
-                jObject.Add(new JProperty("platform_name", Application.platform.ToString()));
-                jObject.Add(new JProperty("platform_version", SystemInfo.operatingSystem));
-
-                jObject.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
-                jObject.Add(new JProperty("processor_count", SystemInfo.processorCount));
-                jObject.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
-                jObject.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
-                AnalyticManager.AddEvent(EventTypes.Identify, jObject);
             }
+            AnalyticManager.AddEvent(EventTypes.Identify, jObject);
         }
 
-        public static void IdentifyUserData(JObject userData)
+        public static void IdentifyCustomUser(JObject userProperties)
         {
-            if (AnalyticManager.initialized)
+            JObject jObject = LoadLocalProfile();
+
+            UserVertification.GetArgVertification(out var signature, out var message);
+            var userData = UserVertification.Vertification(signature, message);
+            if (userData != null)
             {
-                string userId = PlayerPrefs.GetString("userId");
-                if (string.IsNullOrEmpty(userId))
+                string roninAddress = (string)userData["roninAddress"];
+                if (string.IsNullOrEmpty(roninAddress))
                 {
-                    userId = System.Guid.NewGuid().ToString();
-                    PlayerPrefs.SetString("userId", userId);
+                    jObject.Add(new JProperty("ronin_address", roninAddress));
                 }
+            }
 
-                string roninAddress = "";
-                try
+            if(userProperties != null)
+            {
+                string roninAddress = (string)userData["ronin_address"];
+                if (!string.IsNullOrEmpty(roninAddress))
                 {
-                    roninAddress = userData["roninAddress"].Value<string>();
+                    jObject["ronin_address"] = roninAddress;
                 }
-                catch (System.Exception ex) { }
+                string userId = (string)userProperties["user_id"];
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    AnalyticManager.userId = userId;
+                }
+                jObject.Add(new JProperty("user_properties", userProperties));
+            }
 
-                AnalyticManager.userId = userId;
+            StartNewSession(AnalyticManager.userId);
+            AnalyticManager.AddEvent(EventTypes.Identify, jObject);
+        }
+
+        private static JObject LoadLocalProfile()
+        {
+            string userId = PlayerPrefs.GetString("userId");
+            if (string.IsNullOrEmpty(userId))
+            {
+                userId = System.Guid.NewGuid().ToString();
+                PlayerPrefs.SetString("userId", userId);
+            }
+            AnalyticManager.userId = userId;
 #if UNITY_EDITOR
             AnalyticManager.env = "dev";
 #else
-                AnalyticManager.env = "staging";
+            AnalyticManager.env = "staging";
 #endif
 
-                var jObject = new JObject();
-                jObject.Add(new JProperty("ronin_address", roninAddress));
-                jObject.Add(new JProperty("device_name", SystemInfo.deviceModel));
-                jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
-                jObject.Add(new JProperty("platform_name", Application.platform.ToString()));
-                jObject.Add(new JProperty("platform_version", SystemInfo.operatingSystem));
+            var jObject = new JObject();
+            jObject.Add(new JProperty("device_name", SystemInfo.deviceModel));
+            jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
+            jObject.Add(new JProperty("platform_name", Application.platform.ToString()));
+            jObject.Add(new JProperty("platform_version", SystemInfo.operatingSystem));
 
-                jObject.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
-                jObject.Add(new JProperty("processor_count", SystemInfo.processorCount));
-                jObject.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
-                jObject.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
-                AnalyticManager.AddEvent(EventTypes.Identify, jObject);
-            }
+            jObject.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
+            jObject.Add(new JProperty("processor_count", SystemInfo.processorCount));
+            jObject.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
+            jObject.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
+            return jObject;
         }
 
         public static void InitManager(string apiKey)
         {
-            AnalyticManager.apiKey = apiKey;
+            AnalyticManager.API_KEY = apiKey;
             if (initialized) return;
-            if (string.IsNullOrEmpty(endPoint) || string.IsNullOrEmpty(apiKey))
+            if (string.IsNullOrEmpty(EN_POINT) || string.IsNullOrEmpty(apiKey))
             {
                 Debug.LogError("AnalyticManager invalid endpoint");
                 return;
@@ -104,9 +111,8 @@ namespace Analytic
             sessionId = Guid.NewGuid().ToString();
             sessionOffset = 1;
 
-
-            AnalyticManager.heartbeatStats = new HeartbeatStats();
-            AnalyticManager.heartbeatStats.Init();
+            AnalyticManager._heartbeatStats = new HeartbeatStats();
+            AnalyticManager._heartbeatStats.Init();
 
             lastRequestTime = float.MinValue;
             initialized = true;
@@ -117,6 +123,19 @@ namespace Analytic
 
             analyticBehavior.StartCoroutine(CheckingTimer());
             Debug.Log("AnalyticManager StartSession");
+        }
+
+        private static void StartNewSession(string userId)
+        {
+            if (userId != PlayerPrefs.GetString("userId"))
+            {
+                PlayerPrefs.SetString("userId", userId);
+                sessionId = Guid.NewGuid().ToString();
+                sessionOffset = 1;
+
+                AnalyticManager._heartbeatStats = new HeartbeatStats();
+                AnalyticManager._heartbeatStats.Init();
+            }
         }
 
         public static void AddEvent(EventTypes type, object data)

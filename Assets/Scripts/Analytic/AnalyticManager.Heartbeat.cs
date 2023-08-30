@@ -19,7 +19,7 @@ namespace Analytic
 #endif
             if (isPressed)
             {
-                heartbeatStats.OnNewPressed();
+                _heartbeatStats.OnNewPressed();
             }
         }
     }
