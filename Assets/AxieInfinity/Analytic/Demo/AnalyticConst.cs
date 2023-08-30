@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Analytic
+namespace Analytic.Demo
 {
     public class AnalyticConst
     {

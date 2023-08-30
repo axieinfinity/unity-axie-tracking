@@ -63,7 +63,7 @@ namespace Analytic
             if (activeScene != null && activeScene.name != _currentName)
             {
                 _currentName = activeScene.name;
-                AnalyticManager.AddEvent(EventTypes.Screen, AnalyticConst.NewScreenEvent("s_" + _currentName));
+                AnalyticManager.AddEvent(EventTypes.Screen, new { @event = "s_" + _currentName });
             }
 
             //Create new request
