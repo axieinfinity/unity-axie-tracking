@@ -32,7 +32,6 @@ namespace Analytic.Demo
             AnalyticManager.IdentifyLocalUser(); //INIT IDENTIFY LOCAL USER
         }
 
-
         public void GameOver()
         {
             gameOver.SetActive(true);

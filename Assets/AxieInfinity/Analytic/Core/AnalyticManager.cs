@@ -120,6 +120,7 @@ namespace Analytic
             var behavior = new GameObject();
             behavior.name = "AnalyticBehavior";
             analyticBehavior = behavior.AddComponent<AnalyticBehavior>();
+            UnityEngine.GameObject.DontDestroyOnLoad(behavior);
 
             analyticBehavior.StartCoroutine(CheckingTimer());
             Debug.Log("AnalyticManager StartSession");
