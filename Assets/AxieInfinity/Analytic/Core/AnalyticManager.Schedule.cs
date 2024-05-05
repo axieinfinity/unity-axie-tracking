@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -45,13 +44,7 @@ namespace Analytic
             if (analyticListData == null) return;
             if(analyticListData.listEventDatas.Count == 0)
             {
-                //string heartbeatData = JsonConvert.SerializeObject(_heartbeatStats);
-
-                //var jObject = new JObject();
-                //var jHeartbeatData = JObject.Parse(heartbeatData);
-                //jObject.Add("action_properties", jHeartbeatData);
-                //jObject.Add(new JProperty("event", "heartbeat"));
-                AddEvent(EventTypes.Track, new
+                AddTrackEvent(new
                 {
                     @event = "heartbeat",
                     action_properties = _heartbeatStats
@@ -63,7 +56,7 @@ namespace Analytic
             if (activeScene != null && activeScene.name != _currentName)
             {
                 _currentName = activeScene.name;
-                AnalyticManager.AddEvent(EventTypes.Screen, new { @event = "s_" + _currentName });
+                AnalyticManager.AddScreenEvent(new { @event = "s_" + _currentName });
             }
 
             //Create new request
@@ -114,7 +107,7 @@ namespace Analytic
         {
             if (!initialized)
                 return;
-            analyticRequest ??= NewRequest();
+            if (analyticRequest == null) analyticRequest = NewRequest();
             if (analyticRequest == null) return;
 
             Submit(analyticRequest, (op) =>

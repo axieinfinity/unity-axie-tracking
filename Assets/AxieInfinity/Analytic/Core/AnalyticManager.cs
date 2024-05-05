@@ -1,43 +1,65 @@
 using System;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 namespace Analytic
 {
+
     public partial class AnalyticManager
     {
+        private class AnalyticBehavior : MonoBehaviour
+        {
+        }
+
         public static string buildVersion => $"{Application.version}";
-       
+
         public static string sessionId { get; private set; }
         public static long sessionOffset { get; private set; }
         public static bool initialized { get; private set; }
         public static string userId;
         public static string env;
-        
+
         private static float lastRequestTime;
 
         private static AnalyticListData analyticListData = new AnalyticListData(AnalyticListData.analyticListData);
-        public static AnalyticBehavior analyticBehavior;
-     
+        private static AnalyticBehavior analyticBehavior;
+
         public static void IdentifyLocalUser()
         {
             JObject jObject = LoadLocalProfile();
 
             UserVertification.GetArgVertification(out var signature, out var message);
             var userData = UserVertification.Vertification(signature, message);
-            if(userData != null)
+            JObject jUserProperties = new JObject();
+            if (userData != null)
             {
                 string roninAddress = (string)userData["roninAddress"];
                 if (string.IsNullOrEmpty(roninAddress))
                 {
                     jObject.Add(new JProperty("ronin_address", roninAddress));
+                    jUserProperties.Add(new JProperty("ronin_address", roninAddress));
                 }
             }
-            AnalyticManager.AddEvent(EventTypes.Identify, jObject);
+            jUserProperties.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
+            jUserProperties.Add(new JProperty("processor_count", SystemInfo.processorCount));
+            jUserProperties.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
+            jUserProperties.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
+            jObject.Add(new JProperty("user_properties", jUserProperties));
+            AnalyticManager.AddIdentifyEvent(jObject);
         }
 
-        public static void IdentifyCustomUser(JObject userProperties)
+        public static void IdentifyCustomUser(object userProperties)
         {
+            JObject jUserProperties = null;
+            if (userProperties is JObject)
+            {
+                jUserProperties = userProperties as JObject;
+            }
+            else
+            {
+                jUserProperties = JObject.Parse(JsonConvert.SerializeObject(userProperties));
+            }
             JObject jObject = LoadLocalProfile();
 
             UserVertification.GetArgVertification(out var signature, out var message);
@@ -51,23 +73,23 @@ namespace Analytic
                 }
             }
 
-            if(userProperties != null)
+            if (jUserProperties != null)
             {
-                string roninAddress = (string)userData["ronin_address"];
+                string roninAddress = (string)jUserProperties["ronin_address"];
                 if (!string.IsNullOrEmpty(roninAddress))
                 {
                     jObject["ronin_address"] = roninAddress;
                 }
-                string userId = (string)userProperties["user_id"];
+                string userId = (string)jUserProperties["user_id"];
                 if (!string.IsNullOrEmpty(userId))
                 {
                     AnalyticManager.userId = userId;
                 }
-                jObject.Add(new JProperty("user_properties", userProperties));
+                jObject.Add(new JProperty("user_properties", jUserProperties));
             }
 
             StartNewSession(AnalyticManager.userId);
-            AnalyticManager.AddEvent(EventTypes.Identify, jObject);
+            AnalyticManager.AddIdentifyEvent(jObject);
         }
 
         private static JObject LoadLocalProfile()
@@ -90,11 +112,6 @@ namespace Analytic
             jObject.Add(new JProperty("device_id", SystemInfo.deviceUniqueIdentifier));
             jObject.Add(new JProperty("platform_name", Application.platform.ToString()));
             jObject.Add(new JProperty("platform_version", SystemInfo.operatingSystem));
-
-            jObject.Add(new JProperty("system_memory_size", SystemInfo.systemMemorySize));
-            jObject.Add(new JProperty("processor_count", SystemInfo.processorCount));
-            jObject.Add(new JProperty("graphics_device", SystemInfo.graphicsDeviceName));
-            jObject.Add(new JProperty("graphics_memory_size", SystemInfo.graphicsMemorySize));
             return jObject;
         }
 
@@ -139,9 +156,21 @@ namespace Analytic
             }
         }
 
-        public static void AddEvent(EventTypes type, object data)
+        public static void AddIdentifyEvent(object data)
         {
-            var analyticEvent = new AnalyticEvent(type, data);
+            var analyticEvent = new AnalyticEvent(EventTypes.Identify, data);
+            AddEvent(analyticEvent);
+        }
+
+        public static void AddScreenEvent(object data)
+        {
+            var analyticEvent = new AnalyticEvent(EventTypes.Screen, data);
+            AddEvent(analyticEvent);
+        }
+
+        public static void AddTrackEvent(object data)
+        {
+            var analyticEvent = new AnalyticEvent(EventTypes.Track, data);
             AddEvent(analyticEvent);
         }
 
@@ -167,7 +196,6 @@ namespace Analytic
 
             return new
             {
-                
                 uuid = Guid.NewGuid().ToString(),
                 timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd HH:mm:ss"),
                 session_id = sessionId,

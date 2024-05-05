@@ -37,8 +37,8 @@ namespace Analytic.Demo
             gameOver.SetActive(true);
 
             //TRACKING
-            AnalyticManager.AddEvent(EventTypes.Screen, AnalyticConst.NewScreenEvent("game_over"));
-            AnalyticManager.AddEvent(EventTypes.Track, AnalyticConst.NewTrackGameOver(score));
+            AnalyticManager.AddScreenEvent(AnalyticConst.NewScreenEvent("game_over"));
+            AnalyticManager.AddTrackEvent(AnalyticConst.NewTrackGameOver(score));
         }
     }
 }

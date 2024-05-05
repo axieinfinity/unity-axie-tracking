@@ -45,10 +45,10 @@ namespace Analytic
                 case EventTypes.Identify:
                     break;
                 case EventTypes.Screen:
-                    this.data["screen"] ??= this.data["event"];
+                    if(this.data["screen"] == null) this.data["screen"] = this.data["event"];
                     break;
                 case EventTypes.Track:
-                    this.data["action"] ??= this.data["event"];
+                    if(this.data["action"] == null) this.data["action"] = this.data["event"];
                     break;
             }
         }
